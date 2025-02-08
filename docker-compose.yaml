@@ -1,4 +1,17 @@
 services:
+  mongo:
+    image: mongo:6.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.runCommand('ping').ok"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+
   backend:
     build:
       context: .
@@ -9,19 +22,10 @@ services:
       - "5000:5000"
     volumes:
       - .:/app
-      - /app/node_modules
     environment:
-      - MONGO_URI=mongodb://mongo:27017/recipes
+      - MONGO_URL=mongodb://mongo:27017/recipes
     depends_on:
       - mongo
-
-  mongo:
-    image: mongo:6.0
-    container_name: mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
 
 volumes:
   mongo_data:

@@ -1,5 +1,5 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user'); // Импорт модели пользователя
 require('dotenv').config();
@@ -7,18 +7,18 @@ require('dotenv').config();
 const router = express.Router();
 
 // Регистрация пользователя
-router.post('/register', async (req, res) => {
+router.post('/register', (req, res) => {
   try {
     const { firstname, lastname, email, password } = req.body;
 
     // Проверка, есть ли уже пользователь с таким email
-    const existingUser = await User.findOne({ email });
+    const existingUser = User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Email уже используется' });
     }
 
     // Хэширование пароля
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = bcrypt.hash(password, 10);
 
     // Создание нового пользователя
     const user = new User({
@@ -28,9 +28,14 @@ router.post('/register', async (req, res) => {
       password: hashedPassword,
     });
 
-    await user.save();
+    user.save();
 
-    res.status(201).json({ message: 'Пользователь успешно зарегистрирован' });
+    // Генерация JWT токена
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    });
+
+    res.status(200).json({ token, userId: user._id });
   } catch (error) {
     res.status(500).json({ message: 'Ошибка сервера', error: error.message });
   }
