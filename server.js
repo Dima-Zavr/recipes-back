@@ -17,7 +17,7 @@ const connectDB = async (retries = 5, delay = 5000) => {
         try {
             await mongoose.connect(process.env.MONGO_URL, {
                 useNewUrlParser: true,
-                useUnifiedTopology: true,
+                useUnifiedTopology: true
             });
             console.log("MongoDB подключена");
             return;
@@ -36,7 +36,7 @@ app.listen(process.env.PORT, () => {
     console.log(`Сервер запущен на порту ${process.env.PORT}`);
 });
 
-app.use(express.json({ limit: '50mb' }))
+app.use(express.json({ limit: "50mb" }));
 app.use("/api/recipes", recipesRoutes); // Данные по рецептам
 app.use("/api/auth", authRoutes); // Авторизация / Регистрация
 app.use("/api/user", userRoutes); // Данные пользователя

@@ -2,75 +2,109 @@ const express = require("express");
 const router = express.Router();
 const Recipe = require("../models/recipe");
 const User = require("../models/user");
+const authenticateToken = require("../controllers/authenticateToken");
 
 // Получить данные по карточкам рецептов
-router.get("/card_recipes", async (req, res) => {
-  try {
-    res.json({
-      cardRecipes: [
-        {
-          id: 1,
-          name: "Куринная лапша",
-          photos: [
-            "https://cdn.xn--j1agri5c.xn--p1ai/preview/7813f67d-d637-4da1-9e76-9aa08d0b02ae.webp",
-          ],
-          cook_time: 30,
-          calories: 43,
-          like: [1],
-        },
-        {
-          id: 2,
-          name: "Классические блины",
-          photos: [
-            "https://cdn.xn--j1agri5c.xn--p1ai/preview/dc5c6931-bdc1-4442-8cc3-91bf958fc45f.webp",
-          ],
-          cook_time: 25,
-          calories: 217,
-          like: [2],
-        },
-        {
-          id: 3,
-          name: "Жареный рис с яйцом",
-          photos: [
-            "https://cdn.xn--j1agri5c.xn--p1ai/preview/ab08e314-bd52-472f-9188-c7e22868d1aa.webp",
-          ],
-          cook_time: 30,
-          calories: 156,
-          like: [],
-        },
-        {
-          id: 4,
-          name: "Борщ с говядиной",
-          photos: [
-            "https://cdn.xn--j1agri5c.xn--p1ai/preview/a78801c8-9a6e-4d12-9be2-f2fe6afc196a.webp",
-          ],
-          cook_time: 45,
-          calories: 33,
-          like: [],
-        },
-        {
-          id: 5,
-          name: "Паста с креветками",
-          photos: [
-            "https://cdn.xn--j1agri5c.xn--p1ai/preview/b4a5cdfd-b341-4cf6-b26a-773d4726289d.webp",
-          ],
-          cook_time: 15,
-          calories: 132,
-          like: [],
-        },
-      ],
-    });
-  } catch (error) {}
+router.get("/card_recipes", authenticateToken, async (req, res) => {
+    try {
+        const page = parseInt(req.query._page) || 1;
+        const limit = parseInt(req.query._limit) || 10;
+        const search = req.query.search || ""; // Поисковая строка (по умолчанию пустая)
+
+        // Проверка на корректность параметров
+        if (page < 1 || limit < 1) {
+            return res.status(400).json({ message: "Некорректные параметры пагинации" });
+        }
+
+        // Вычисление количества рецептов для пропуска
+        const skip = (page - 1) * limit;
+
+        // Создание фильтра для поиска
+        const filter = {};
+        if (search) {
+            filter.name = { $regex: search, $options: "i" }; // Поиск по полю name (регистронезависимый)
+        }
+
+        // Запрос рецептов из базы данных с пагинацией
+        const recipes = await Recipe.find(filter)
+            .select("name photos cook_time calories")
+            .skip(skip)
+            .limit(limit)
+            .exec();
+
+        // Получение общего количества рецептов (для пагинации на клиенте)
+        const totalRecipes = await Recipe.countDocuments(filter);
+
+        let recipesWithLike = recipes;
+        if (req.user) {
+            // Если пользователь аутентифицирован, проверяем, лайкал ли он каждый рецепт
+            const user = await User.findById(req.user.id);
+
+            if (user) {
+                recipesWithLike = recipes.map((recipe) => {
+                    const liked = user.liked_recipes.includes(recipe._id); // Проверка, лайкал ли пользователь рецепт
+                    return {
+                        ...recipe.toObject(), // Преобразуем Mongoose-документ в обычный объект
+                        like: liked // Добавляем параметр like
+                    };
+                });
+            }
+        } else {
+            // Если пользователь не аутентифицирован, добавляем like: false
+            recipesWithLike = recipes.map((recipe) => ({
+                ...recipe.toObject(),
+                like: false
+            }));
+        }
+
+        // Формирование ответа
+        res.status(200).json({
+            recipes: recipesWithLike,
+            totalRecipes,
+            totalPages: Math.ceil(totalRecipes / limit),
+            currentPage: page
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 });
 
 // Получить всю инфу по конкретному рецепту
 router.get("/inf_recipe", async (req, res) => {
-  // try {
-  //   const recipes = await Recipe.find();
-  //   res.json(recipes);
-  // } catch (err) {
-  //   res.status(500).json({ message: err.message });
-  // }
+    // try {
+    //   const recipes = await Recipe.find();
+    //   res.json(recipes);
+    // } catch (err) {
+    //   res.status(500).json({ message: err.message });
+    // }
+});
+
+// Создать новый рецепт
+router.post("/add_recipe", authenticateToken, async (req, res) => {
+    try {
+        const { name, photos, cook_time, calories, ingredients, equipments, cook_steps } = req.body;
+
+        if (!req.user) {
+            return res.status(401).json({ message: 'Токен отсутствует' });
+        }
+
+        const recipe = new Recipe({
+            name,
+            photos,
+            cook_time,
+            calories,
+            ingredients,
+            equipments,
+            cook_steps,
+            creator: req.user.id
+        });
+
+        await recipe.save();
+
+        res.status(200).json({ message: "Рецепт сохранен" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 });
 
 module.exports = router;
