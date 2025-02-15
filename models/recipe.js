@@ -14,6 +14,8 @@ const RecipeSchema = new mongoose.Schema({
         required: true
     },
     createdAt: { type: Date, default: Date.now }
+}, {
+    versionKey: false
 });
 
 module.exports = mongoose.model("Recipe", RecipeSchema);

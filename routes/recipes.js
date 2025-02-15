@@ -84,7 +84,7 @@ router.get("/inf_recipe/:id", authenticateToken, async (req, res) => {
         if (req.user) {
             const user = await User.findById(req.user.id);
             if (user) {
-                recipeWithLike.like = user.likedRecipes.includes(recipeId); // Проверка, лайкал ли пользователь рецепт
+                recipeWithLike.like = user.liked_recipes.includes(req.params.id); // Проверка, лайкал ли пользователь рецепт
             }
         } else {
             recipeWithLike.like = false; // Если пользователь не аутентифицирован, like: false
