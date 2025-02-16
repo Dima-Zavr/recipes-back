@@ -10,7 +10,7 @@ router.get("/", authenticateToken, async (req, res) => {
             return res.status(401).json({ message: "Вы не авторизованы" });
         }
 
-        const user = await User.findById(req.user.id);
+        const user = await User.findById(req.user.id).select("-password -liked_recipes");
 
         res.status(200).json(user);
     } catch (err) {

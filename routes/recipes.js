@@ -5,7 +5,7 @@ const User = require("../models/user");
 const authenticateToken = require("../controllers/authenticateToken");
 
 // Получить данные по карточкам рецептов
-router.get("/card_recipes", authenticateToken, async (req, res) => {
+router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) => {
     try {
         const page = parseInt(req.query._page) || 1;
         const limit = parseInt(req.query._limit) || 10;
@@ -23,6 +23,25 @@ router.get("/card_recipes", authenticateToken, async (req, res) => {
         const filter = {};
         if (search) {
             filter.name = { $regex: search, $options: "i" }; // Поиск по полю name (регистронезависимый)
+        }
+
+        // Дополнительные фильтры в зависимости от типа рецептов
+        if (req.params.type_recipes === "myRecipes") {
+            // Рецепты текущего пользователя
+            if (!req.user) {
+                return res.status(401).json({ message: "Вы не авторизованы" });
+            }
+            filter.creator = req.user.id; // Фильтр по создателю рецепта
+        } else if (req.params.type_recipes === "likeRecipes") {
+            // Рецепты, которые пользователь добавил в избранное
+            if (!req.user) {
+                return res.status(401).json({ message: "Вы не авторизованы" });
+            }
+            const user = await User.findById(req.user.id);
+            if (!user) {
+                return res.status(404).json({ message: "Пользователь не найден" });
+            }
+            filter._id = { $in: user.liked_recipes }; // Фильтр по id рецептов из избранного
         }
 
         // Запрос рецептов из базы данных с пагинацией
@@ -102,7 +121,7 @@ router.post("/add_recipe", authenticateToken, async (req, res) => {
         const { name, photos, cook_time, calories, ingredients, equipments, cook_steps } = req.body;
 
         if (!req.user) {
-            return res.status(401).json({ message: "Токен отсутствует" });
+            return res.status(401).json({ message: "Вы не авторизованы" });
         }
 
         const recipe = new Recipe({
@@ -125,10 +144,10 @@ router.post("/add_recipe", authenticateToken, async (req, res) => {
 });
 
 // Добавить в избранное / убрать из избранного
-router.patch("/like_recipe/:id", authenticateToken, async (req, res) => {
+router.get("/like_recipe/:id", authenticateToken, async (req, res) => {
     try {
         if (!req.user) {
-            return res.status(401).json({ message: "Токен отсутствует" });
+            return res.status(401).json({ message: "Вы не авторизованы" });
         }
 
         const user = await User.findById(req.user.id);

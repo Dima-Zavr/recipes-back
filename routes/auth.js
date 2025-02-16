@@ -17,9 +17,6 @@ router.post("/register", async (req, res) => {
             return res.status(400).json({ message: "Email уже используется" });
         }
 
-        // Хэширование пароля
-        const hashedPassword = await bcrypt.hash(password, 10);
-
         // Создание нового пользователя
         const user = new User({
             firstname,
@@ -52,8 +49,8 @@ router.post("/login", async (req, res) => {
         }
 
         // Проверка пароля
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
             return res.status(400).json({ message: "Неверный email или пароль" });
         }
 
