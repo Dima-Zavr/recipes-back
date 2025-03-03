@@ -3,13 +3,12 @@ const router = express.Router();
 const Recipe = require("../models/recipe");
 const User = require("../models/user");
 const authenticateToken = require("../controllers/authenticateToken");
+const filterData = require("../controllers/filterData");
 
 // Получить данные по карточкам рецептов
 router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) => {
     try {
-        const page = parseInt(req.query._page) || 1;
-        const limit = parseInt(req.query._limit) || 10;
-        const search = req.query.search || ""; // Поисковая строка (по умолчанию пустая)
+        const {search = "", time_min, time_max, cal_min, cal_max, page = 1, limit = 10 } = req.query;
 
         // Проверка на корректность параметров
         if (page < 1 || limit < 1) {
@@ -24,7 +23,13 @@ router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) =>
         if (search) {
             filter.name = { $regex: search, $options: "i" }; // Поиск по полю name (регистронезависимый)
         }
-
+        if (time_min || time_max) {
+            filter.cook_time = { $gte: time_min, $lte: time_max }
+        }
+        if (cal_min || cal_max) {
+            filter.calories = { $gte: cal_min, $lte: cal_max }
+        }
+        
         // Дополнительные фильтры в зависимости от типа рецептов
         if (req.params.type_recipes === "myRecipes") {
             // Рецепты текущего пользователя
@@ -79,9 +84,12 @@ router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) =>
         // Формирование ответа
         res.status(200).json({
             recipes: recipesWithLike,
-            totalRecipes,
-            totalPages: Math.ceil(totalRecipes / limit),
-            currentPage: page
+            meta: {
+                totalRecipes,
+                totalPages: Math.ceil(totalRecipes / limit),
+                currentPage: page,
+                filters: await filterData()
+            }
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-// Схема пользователя для БД
 const UserSchema = new mongoose.Schema(
     {
         firstname: { type: String, required: true },
