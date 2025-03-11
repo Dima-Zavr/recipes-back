@@ -6,10 +6,11 @@ async function filterData() {
             {
                 $group: {
                     _id: null, // Группируем все документы вместе
-                    time_min: { $min: "$cook_time" }, // Находим минимальное значение cook_time
-                    time_max: { $max: "$cook_time" }, // Находим максимальное значение cook_time
-                    cal_min: { $min: "$calories" }, // Находим минимальное значение calories
-                    cal_max: { $max: "$calories" } // Находим максимальное значение calories
+                    times_min: { $min: "$cook_time" }, // Находим минимальное значение cook_time
+                    times_max: { $max: "$cook_time" }, // Находим максимальное значение cook_time
+                    cals_min: { $min: "$calories" }, // Находим минимальное значение calories
+                    cals_max: { $max: "$calories" }, // Находим максимальное значение calories
+                    types: { $addToSet: "$type" }        // Собираем уникальные значения type
                 }
             }
         ]);
@@ -18,14 +19,19 @@ async function filterData() {
         // Если результат пустой (нет рецептов в базе)
         if (result.length === 0) {
             return {
-                time_min: null,
-                time_max: null,
-                cal_min: null,
-                cal_max: null
+                times_min: null,
+                times_max: null,
+                cals_min: null,
+                cals_max: null,
+                types: [] // Пустой массив для типов
             };
         }
+        const sortedTypes = result[0].types.sort();
         // Возвращаем результат
-        return result[0];
+        return {
+            ...result[0],
+            types: sortedTypes
+        }
     } catch (error) {
         console.error("Ошибка при поиске min/max значений: ", error);
         throw error;

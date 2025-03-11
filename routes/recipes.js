@@ -8,7 +8,7 @@ const filterData = require("../controllers/filterData");
 // Получить данные по карточкам рецептов
 router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) => {
     try {
-        const {search = "", time_min, time_max, cal_min, cal_max, page = 1, limit = 10 } = req.query;
+        const {search = "", times = {}, cals = {}, page = 1, limit = 10, types = []  } = req.query;
 
         // Проверка на корректность параметров
         if (page < 1 || limit < 1) {
@@ -23,11 +23,14 @@ router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) =>
         if (search) {
             filter.name = { $regex: search, $options: "i" }; // Поиск по полю name (регистронезависимый)
         }
-        if (time_min || time_max) {
-            filter.cook_time = { $gte: time_min, $lte: time_max }
+        if (times.min || times.max) {
+            filter.cook_time = { $gte: times.min, $lte: times.max }
         }
-        if (cal_min || cal_max) {
-            filter.calories = { $gte: cal_min, $lte: cal_max }
+        if (cals.min || cals.max) {
+            filter.calories = { $gte: cals.min, $lte: cals.max }
+        }
+        if (types && types.length > 0) {
+            filter.type = { $in: types }; // Тип должен совпадать с одним из значений в массиве
         }
         
         // Дополнительные фильтры в зависимости от типа рецептов
