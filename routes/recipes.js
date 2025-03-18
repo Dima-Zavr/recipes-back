@@ -8,7 +8,15 @@ const filterData = require("../controllers/filterData");
 // Получить данные по карточкам рецептов
 router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) => {
     try {
-        const {search = "", times = {}, cals = {}, page = 1, limit = 10, types = []  } = req.query;
+        const {
+            search = "",
+            times = {},
+            cals = {},
+            page = 1,
+            limit = 10,
+            types = [],
+            sort = ""
+        } = req.query;
 
         // Проверка на корректность параметров
         if (page < 1 || limit < 1) {
@@ -18,21 +26,36 @@ router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) =>
         // Вычисление количества рецептов для пропуска
         const skip = (page - 1) * limit;
 
+        // Создание сортировки
+        const sorted = {};
+        if (sort === "asc_cook_time") {
+            sorted.cook_time = 1;
+        }
+        if (sort === "desc_cook_time") {
+            sorted.cook_time = -1;
+        }
+        if (sort === "asc_calories") {
+            sorted.calories = 1;
+        }
+        if (sort === "desc_calories") {
+            sorted.calories = -1;
+        }
+
         // Создание фильтра для поиска
         const filter = {};
         if (search) {
             filter.name = { $regex: search, $options: "i" }; // Поиск по полю name (регистронезависимый)
         }
         if (times.min || times.max) {
-            filter.cook_time = { $gte: times.min, $lte: times.max }
+            filter.cook_time = { $gte: times.min, $lte: times.max };
         }
         if (cals.min || cals.max) {
-            filter.calories = { $gte: cals.min, $lte: cals.max }
+            filter.calories = { $gte: cals.min, $lte: cals.max };
         }
         if (types && types.length > 0) {
             filter.type = { $in: types }; // Тип должен совпадать с одним из значений в массиве
         }
-        
+
         // Дополнительные фильтры в зависимости от типа рецептов
         if (req.params.type_recipes === "myRecipes") {
             // Рецепты текущего пользователя
@@ -54,6 +77,7 @@ router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) =>
 
         // Запрос рецептов из базы данных с пагинацией
         const recipes = await Recipe.find(filter)
+            .sort(sorted)
             .select("name photos cook_time calories")
             .skip(skip)
             .limit(limit)
@@ -91,7 +115,14 @@ router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) =>
                 totalRecipes,
                 totalPages: Math.ceil(totalRecipes / limit),
                 currentPage: page,
-                filters: await filterData()
+                filters: await filterData(),
+                sort: [
+                    { value: "default", label: "По умолчанию" },
+                    { value: "asc_cook_time", label: "По возрастанию времени приготовления" },
+                    { value: "desc_cook_time", label: "По убыванию времени приготовления" },
+                    { value: "asc_calories", label: "По возрастанию калорий" },
+                    { value: "desc_calories", label: "По убыванию калорий" }
+                ]
             }
         });
     } catch (error) {
