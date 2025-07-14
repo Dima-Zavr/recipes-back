@@ -194,6 +194,33 @@ router.post("/add_recipe", authenticateToken, async (req, res) => {
     }
 });
 
+// Редактировать рецепт
+router.post("/edit_recipe/:id", authenticateToken, async (req, res) => {
+    try {
+        const recipe = await Recipe.findById(req.params.id);
+
+        const { name, photos, cook_time, calories, ingredients, equipments, cook_steps } = req.body;
+
+        if (!req.user) {
+            return res.status(401).json({ message: "Вы не авторизованы" });
+        }
+
+        recipe.name = name,
+        recipe.photos = photos,
+        recipe.cook_time = cook_time,
+        recipe.calories = calories,
+        recipe.ingredients = ingredients,
+        recipe.equipments = equipments,
+        recipe.cook_steps = cook_steps,
+
+        await recipe.save();
+
+        res.status(200).json({ message: "Рецепт сохранен" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // Добавить в избранное / убрать из избранного
 router.get("/like_recipe/:id", authenticateToken, async (req, res) => {
     try {
