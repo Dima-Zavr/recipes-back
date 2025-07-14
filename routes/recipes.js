@@ -133,7 +133,7 @@ router.get("/card_recipes/:type_recipes", authenticateToken, async (req, res) =>
 // Получить всю инфу по конкретному рецепту
 router.get("/inf_recipe/:id", authenticateToken, async (req, res) => {
     try {
-        const recipe = await Recipe.findById(req.params.id).select("-creator -createdAt");
+        const recipe = await Recipe.findById(req.params.id).select("-createdAt");
 
         // Если рецепт не найден, возвращаем ошибку 404
         if (!recipe) {
@@ -146,10 +146,19 @@ router.get("/inf_recipe/:id", authenticateToken, async (req, res) => {
             const user = await User.findById(req.user.id);
             if (user) {
                 recipeWithLike.like = user.liked_recipes.includes(req.params.id); // Проверка, лайкал ли пользователь рецепт
+                if (recipeWithLike.creator.toString() === user._id.toString()) {  //Проверка принадлежит ли пользователю этот рецепт
+                    recipeWithLike.isMyRecipe = true;
+                } else {
+                    recipeWithLike.isMyRecipe = false;
+                }
+                
             }
         } else {
             recipeWithLike.like = false; // Если пользователь не аутентифицирован, like: false
+            recipeWithLike.isMyRecipe = false;
         }
+        
+        delete recipeWithLike.creator;
 
         res.status(200).json(recipeWithLike);
     } catch (err) {
