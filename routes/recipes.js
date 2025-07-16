@@ -215,7 +215,7 @@ router.post("/edit_recipe/:id", authenticateToken, async (req, res) => {
 
         await recipe.save();
 
-        res.status(200).json({ message: "Рецепт сохранен" });
+        res.status(200).json({ message: "Рецепт изменен" });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
